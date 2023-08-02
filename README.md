@@ -1,13 +1,13 @@
 You need to install these libraries and packages before running the code.
 
-# https://pythonbasics.org/python-play-sound/
+!https://pythonbasics.org/python-play-sound/
 sudo apt install mpg123
 
-# for PyQt
+!for PyQt
 conda install pyqt
 
-# for line notify
+!for line notify
 pip install requests
 
-# for opencv
+!for opencv
 pip install opencv-python
