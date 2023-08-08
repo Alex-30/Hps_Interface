@@ -194,7 +194,7 @@ class MyWidget(QMainWindow):
 		# OpenCV video capture for gesture detection
 		cap = cv2.VideoCapture(0)
   		# Load the cascade
-		face_cascade = cv2.CascadeClassifier('./cascade_classifier/haarcascade_frontalface_alt2.xml')
+		face_cascade = cv2.CascadeClassifier('./cascade_classifier/lbpcascade_frontalface_improved.xml')
 
 		if not cap.isOpened():
 			print('Cannot open camera')
@@ -216,10 +216,11 @@ class MyWidget(QMainWindow):
 			# Detect the faces
 			faces = face_cascade.detectMultiScale(gray, 1.1, 4)
 			# Draw the rectangle around each face
-			for (x, y, w, h) in faces:
-				self.cameraDetection.setDetection(x, y, w, h)
-				
-				cv2.rectangle(frame, (x, y), (x+w, y+h), color=(255, 255, 255), thickness=2)
+			if len(faces)>0:
+				for (x, y, w, h) in faces:
+					self.cameraDetection.setDetection(x, y, w, h)
+					
+					cv2.rectangle(frame, (x, y), (x+w, y+h), color=(255, 255, 255), thickness=2)
 			else:
 				self.cameraDetection.setNoDetection()
 

@@ -27,6 +27,7 @@ class CameraDetection():
         self.timer = None
     def setDetection(self, x, y, w, h):
         self._face_pos = (x, y, w, h)
+        print(self.warning)
         if  w > self._frame_width//2  and abs(w/2 - (self._frame_width/2 - x)) < 50 :
             self._face_in_middle = True
             if not self.timer:
