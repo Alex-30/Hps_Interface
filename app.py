@@ -5,6 +5,9 @@ import cv2
 import threading
 import requests
 import datetime
+from face_detection import CameraDetection
+import mediapipe as mp
+import numpy as np
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
@@ -28,13 +31,20 @@ class MyWidget(QMainWindow):
 		self.timer = QtCore.QTimer()
 		self.timer.timeout.connect(self.count)
 
+		self.gesture_frame_width = 400
+		self.gesture_frame_height = 300
+		self.face_frame_width = 900
+		self.face_frame_height = 800
+		self.cameraDetection = CameraDetection(self.face_frame_width, self.face_frame_height)
+
 		self.ui()																		# create the user interface elements
 
 		self.GMT = datetime.timezone(datetime.timedelta(hours=8))						# set GMT timezone with +8 hours
 
 		self.gesture_flag = True														# gesture flag
-		video = threading.Thread(target = self.opencv)									# start video thread for gesture frame
-		video.start()
+		self.face_flag = False															# face flag
+		# video = threading.Thread(target = )									# start video thread for gesture frame
+		# video.start()
 
 
 	def ui(self):
@@ -68,9 +78,13 @@ class MyWidget(QMainWindow):
 
 		# face detection
 		self.face = QtWidgets.QLabel(self)
-		self.face.setGeometry(300, 100, 900, 800)
+		self.face.setGeometry(300, 100, self.face_frame_width, self.face_frame_height)
 		self.face.setStyleSheet('background-color: rgba(255, 255, 255, 0.6); border-radius: 75px;')
 		self.face.hide()
+		self.face_label = QtWidgets.QLabel(self)
+		self.face_label.setGeometry(300, 50, self.face_frame_width, 50)
+		self.face_label.setStyleSheet("background-color: rgba(237, 241, 247, 0.7); font-weight: bold;font-size: 40px;padding: 0 auto; margin: 0 auto;border-radius: 20px;")
+		self.face_label.hide()
 
 
 	def show_face(self):
@@ -80,7 +94,11 @@ class MyWidget(QMainWindow):
 		self.switch.hide()
 		self.btn_home.show()
 		self.face.show()
+		self.face_label.show()
 		self.gesture_flag = False														# turn off camera for gesture
+		self.face_flag = True															# turn on camera for face
+		video = threading.Thread(target = self.faceDetection)
+		video.start()
 
 
 	def show_home(self):
@@ -90,10 +108,12 @@ class MyWidget(QMainWindow):
 		self.switch.show()
 		self.btn_home.hide()
 		self.face.hide()
+		self.face_label.hide()
 
 		self.gesture_flag = True														# turn on camera for gesture
-		video = threading.Thread(target = self.opencv)
-		video.start()
+		self.face_flag = False															# turn off camera for face	
+		# video = threading.Thread(target = )
+		# video.start()
 
 
 	def count(self):
@@ -121,29 +141,55 @@ class MyWidget(QMainWindow):
 		self.timer.start(1000)
 
 
-	def opencv(self):
+	def faceDetection(self):
 		# OpenCV video capture for gesture detection
 		cap = cv2.VideoCapture(0)
+  		# Load the cascade
+		# face_cascade = cv2.CascadeClassifier('haarcascade_frontalface_alt2.xml')
+		mp_face_detection = mp.solutions.face_detection
 
 		if not cap.isOpened():
 			print('Cannot open camera')
 			exit()
+		with mp_face_detection.FaceDetection(model_selection=1, min_detection_confidence=0.5) as face_detector:
+			while self.face_flag:
+				if self.cameraDetection.warning:
+					self.face_label.setText(self.cameraDetection.warning)
+				# Capture video frame from camera
+				ret, frame = cap.read()
+				if not ret:
+					print('Cannot receive frame')
+					break
+				
+				frame = cv2.resize(frame, (self.face_frame_width, self.face_frame_height))		# resize frame
+				frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+				frame = cv2.flip(frame, 1)														# flip frame
+				height, width, channel = frame.shape											# get size and channel
+				results = face_detector.process(frame)
+				
+				if results.detections:
+						for face in [result for result in results.detections if result.score[0] > 0.6]:
+							face_react = np.multiply(
+								[
+									face.location_data.relative_bounding_box.xmin,
+									face.location_data.relative_bounding_box.ymin,
+									face.location_data.relative_bounding_box.width,
+									face.location_data.relative_bounding_box.height,
+								],
+								[width, height, width, height]).astype(int)
+							x, y, w, h = face_react
+							self.cameraDetection.setDetection(x, y, w, h)
+							
+							cv2.rectangle(frame, face_react, color=(255, 255, 255), thickness=2)
+							# draw the score on the top right corner of rectangle.  
+							cv2.putText(frame,f" Face {face.score[0]*100:.1f}",face_react[:2],cv2.FONT_HERSHEY_DUPLEX,0.4,(0, 255, 0),1,cv2.LINE_AA)
+				else:
+					self.cameraDetection.setNoDetection()
 
-		while self.gesture_flag:
-			# Capture video frame from camera
-			ret, frame = cap.read()
-
-			if not ret:
-				print('Cannot receive frame')
-				break
-
-			frame = cv2.resize(frame, (400, 300))										# resize frame
-			frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)								# convert to RBG
-			height, width, channel = frame.shape										# get size and channel
-			bytesPerline = channel * width												# calculate bytesPerline
-
-			img = QImage(frame, width, height, bytesPerline, QImage.Format_RGB888)		# convert images to QImage, so that PyQt5 can read it.
-			self.gesture.setPixmap(QPixmap.fromImage(img))								# display frame on QLabel.
+				bytesPerline = channel * width												# calculate bytesPerline
+				img = QImage(frame, width, height, bytesPerline, QImage.Format_RGB888)		# convert images to QImage, so that PyQt5 can read it.
+				self.face.setPixmap(QPixmap.fromImage(img))								# display frame on QLabel.
+			cap.release()
 
 
 	def set_background(self, image_path):
@@ -178,7 +224,7 @@ class MyWidget(QMainWindow):
 		self.setWindowTitle(now)
 
 if __name__ == '__main__':
-	app = QtWidgets.QApplication(sys.argv)
+	app = QApplication(sys.argv)
 	MainWindow = MyWidget()
 	MainWindow.show()
 
