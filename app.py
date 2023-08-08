@@ -6,7 +6,7 @@ import threading
 import requests
 import datetime
 from face_detection import CameraDetection
-import mediapipe as mp
+# import mediapipe as mp
 import numpy as np
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
@@ -194,7 +194,7 @@ class MyWidget(QMainWindow):
 		# OpenCV video capture for gesture detection
 		cap = cv2.VideoCapture(0)
   		# Load the cascade
-		face_cascade = cv2.CascadeClassifier('haarcascade_frontalface_alt2.xml')
+		face_cascade = cv2.CascadeClassifier('./cascade_classifier/haarcascade_frontalface_alt2.xml')
 
 		if not cap.isOpened():
 			print('Cannot open camera')
